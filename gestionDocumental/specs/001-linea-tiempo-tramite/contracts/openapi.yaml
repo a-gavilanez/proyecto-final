@@ -1,0 +1,148 @@
+openapi: 3.0.3
+info:
+  title: Línea de Tiempo del Trámite
+  description: >
+    Contrato de la consulta de historial/línea de tiempo de un trámite (US-06).
+    Contract-first: este archivo se genera/valida antes de implementar el endpoint,
+    y openapi-generator produce a partir de él la interfaz del controlador y los
+    DTOs (ver research.md §3).
+  version: 1.0.0
+servers:
+  - url: /api
+tags:
+  - name: Historial
+    description: Consulta de la línea de tiempo de un trámite
+paths:
+  /tramites/{tramiteId}/historial:
+    get:
+      operationId: consultarLineaDeTiempo
+      summary: Consultar la línea de tiempo completa de un trámite
+      description: >
+        Devuelve todos los eventos registrados de un trámite (creación, derivación,
+        delegación, respuesta u otro) ordenados del más reciente al más antiguo, con
+        el actor responsable y la fecha/hora de cada uno. El evento más reciente se
+        marca como pendiente cuando el trámite aún no tiene una respuesta cargada.
+      tags:
+        - Historial
+      parameters:
+        - name: tramiteId
+          in: path
+          required: true
+          description: Identificador del trámite cuyo historial se consulta.
+          schema:
+            type: string
+            format: uuid
+        - name: X-Usuario-Id
+          in: header
+          required: true
+          description: >
+            Identificador del usuario que realiza la consulta, usado para verificar
+            autorización sobre el trámite (FR-009). Sustituto temporal mientras no
+            exista un módulo de autenticación compartido (US-01/US-03/US-05, ver
+            research.md §6).
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Línea de tiempo del trámite, ordenada del evento más reciente al más antiguo.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LineaDeTiempoResponse"
+        "403":
+          description: >
+            El usuario autenticado no está autorizado para consultar el historial de
+            este trámite (FR-009).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No existe un trámite con el identificador indicado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    TipoEvento:
+      type: string
+      description: Tipo de evento registrado en el ciclo de vida del trámite.
+      enum:
+        - CREACION
+        - DERIVACION
+        - DELEGACION
+        - RESPUESTA
+        - OTRO
+    DetalleDelegacion:
+      type: object
+      description: Detalle adicional visible al expandir un evento de tipo DELEGACION.
+      properties:
+        sumilla:
+          type: string
+          nullable: true
+          description: >
+            Texto completo de la sumilla del Director. Si es null o vacío, el
+            cliente MUST mostrar explícitamente que no se registró sumilla (FR-006).
+        colaboradorAsignado:
+          type: string
+          description: Nombre del colaborador asignado en esta delegación.
+      required:
+        - colaboradorAsignado
+    EventoLineaDeTiempo:
+      type: object
+      description: Un evento individual de la línea de tiempo del trámite.
+      properties:
+        id:
+          type: string
+          format: uuid
+        tipoEvento:
+          $ref: "#/components/schemas/TipoEvento"
+        actorResponsable:
+          type: string
+          description: Nombre y/o rol del actor responsable de la acción (FR-003).
+        fechaHora:
+          type: string
+          format: date-time
+        etiquetaGenerica:
+          type: string
+          nullable: true
+          description: Etiqueta legible usada únicamente cuando tipoEvento es OTRO.
+        detalleDelegacion:
+          $ref: "#/components/schemas/DetalleDelegacion"
+          nullable: true
+        pendiente:
+          type: boolean
+          description: >
+            true únicamente en el evento más reciente cuando el trámite todavía no
+            tiene una respuesta cargada (FR-007, FR-008).
+      required:
+        - id
+        - tipoEvento
+        - actorResponsable
+        - fechaHora
+        - pendiente
+    LineaDeTiempoResponse:
+      type: object
+      properties:
+        tramiteId:
+          type: string
+          format: uuid
+        eventos:
+          type: array
+          description: Eventos ordenados del más reciente al más antiguo (FR-004).
+          items:
+            $ref: "#/components/schemas/EventoLineaDeTiempo"
+      required:
+        - tramiteId
+        - eventos
+    ErrorResponse:
+      type: object
+      properties:
+        codigo:
+          type: string
+        mensaje:
+          type: string
+      required:
+        - codigo
+        - mensaje

@@ -1,0 +1,72 @@
+{
+  "proyecto": "gestionDocumental",
+  "version": "1.0.0",
+  "fecha": "2026-07-06",
+  "commit": "no .git en la ruta auditada",
+  "tests": {
+    "comando": "./gradlew clean test jacocoTestReport jacocoTestCoverageVerification",
+    "passed": 38,
+    "total": 38,
+    "coverage": 100.0,
+    "coverage_fuente": "build/reports/jacoco/test/jacocoTestReport.xml (regenerado en esta corrida, 2026-07-06; LINE 126/126 = 100%, BRANCH 55/58 = 94.8%, INSTRUCTION 512/512 = 100%). jacocoTestCoverageVerification (gate >=80%) PASA.",
+    "detalle": "BUILD SUCCESSFUL. 38/38 tests (unitarias: domain + application con dobles del repositorio; integración: @DataJpaTest sobre EventoTramiteRepositoryAdapter con tie-break por secuencia, @SpringBootTest+MockMvc sobre el controlador; funcional/aceptación: Cucumber sobre linea-tiempo-tramite.feature cubriendo AC-1/AC-2/AC-3). TipoEvento.OTRO y el desempate por secuencia en fechas iguales están cubiertos por test, no solo por código."
+  },
+  "security": {
+    "fuente": "Semgrep MCP no disponible en esta sesión (mismo estado que auditorías previas del Quality Agent). Revisión manual: grep de secretos/credenciales sobre src/main (sin resultados) y revisión del mecanismo de autorización del endpoint.",
+    "critical": 0,
+    "high": 0,
+    "secrets": 0,
+    "hallazgos": [
+      {
+        "severidad": "medio",
+        "regla": "manual-review · autorizacion-simulada",
+        "archivo": "src/main/java/org/ups/gestiondocumental/tramite/infrastructure/security/SimulatedTramiteAccessAdapter.java",
+        "linea": "16-26",
+        "nota": "FR-009 (restringir acceso solo a usuarios autorizados) se implementa con un adaptador explícitamente temporal: cualquier valor no vacío en X-Usuario-Id distinto del centinela 'no-autorizado' se considera autorizado, sin verificar que ese usuario realmente tenga visibilidad/asignación sobre el trámite. A diferencia de una omisión silenciosa, esto está documentado en el propio código y en plan.md como una dependencia pendiente de US-01/US-03/US-05 — pero mientras esas historias no existan, CUALQUIER usuario con cualquier identificador puede leer el historial de CUALQUIER trámite con solo enviar un header no vacío. No es un secreto expuesto ni una vulnerabilidad de inyección; es un control de acceso de negocio no implementado todavía, señalado aquí para que no se confunda con autorización real en producción."
+      },
+      {
+        "severidad": "informativo",
+        "regla": "manual-review · error-contract-inconsistente",
+        "archivo": "src/main/java/org/ups/gestiondocumental/tramite/infrastructure/web/TramiteExceptionHandler.java",
+        "linea": "N/A (ausencia de handler)",
+        "nota": "Confirmado en verificación runtime: falta de header X-Usuario-Id o tramiteId con formato inválido devuelven HTTP 400 con el cuerpo de error genérico de Spring ({timestamp,status,error,path}) en vez de ErrorResponse{codigo,mensaje} usado consistentemente en 403/404, y ese 400 no está documentado en contracts/openapi.yaml. No es una vulnerabilidad, pero rompe el contrato de la API para los clientes."
+      }
+    ]
+  },
+  "verificacion_runtime": {
+    "fecha": "2026-07-06",
+    "metodo": "El endpoint es de solo lectura y no tiene mecanismo de siembra de datos en producción (sin DataInitializer/data.sql/consola H2); se sembraron eventos reales insertando filas vía JDBC directo sobre el archivo H2 que respalda la app (./gradlew bootRun con spring.datasource.url=jdbc:h2:file:./build/gdocdb y ddl-auto=update), deteniendo y reiniciando la app entre siembra y consulta para no requerir modo servidor concurrente. Se ejercitó el controlador REST real end-to-end, no solo los tests.",
+    "resultado": "PASS. AC-1, AC-2, AC-3 (los 4 pasos, incluida la transición pendiente->respuesta) y FR-006 (sumilla null explícita) se comportan exactamente como especifica spec.md al observarse en la app corriendo. Autorización (403) y no-encontrado (404) devuelven el ErrorResponse documentado. Único hallazgo nuevo: 400 por header/UUID inválido usa un formato de error distinto y no documentado (ver security.hallazgos)."
+  },
+  "spec": "specs/001-linea-tiempo-tramite/spec.md",
+  "criteria": [
+    { "id": "FR-001", "fuente": "spec.md · FR-001 (mostrar línea de tiempo con todos los eventos)", "status": "cumple",
+      "evidencia": "Verificado en runtime: GET /historial sobre un trámite sembrado con 3 eventos devuelve los 3. Además TramiteHistorialControllerIT y el feature Cucumber cubren el mismo camino." },
+    { "id": "FR-002", "fuente": "spec.md · FR-002 (incluir creación, derivación, delegación, respuesta, otros)", "status": "cumple",
+      "evidencia": "Los 4 tipos base verificados en runtime (CREACION, DERIVACION, DELEGACION, RESPUESTA); TipoEvento.OTRO cubierto por ConsultarLineaDeTiempoServiceTest y TramiteEventoTestDataBuilder (grep confirma su uso)." },
+    { "id": "FR-003", "fuente": "spec.md · FR-003 (actor responsable + fecha/hora por evento)", "status": "cumple",
+      "evidencia": "Verificado en runtime: todos los eventos de la respuesta incluyen actorResponsable y fechaHora." },
+    { "id": "FR-004", "fuente": "spec.md · FR-004 (orden cronológico desc, estable)", "status": "cumple",
+      "evidencia": "Verificado en runtime: 4 eventos con fechaHora distinta se devuelven en orden descendente correcto. El desempate por 'secuencia' en fechas iguales (research.md §5) está cubierto por EventoTramiteRepositoryAdapterIT, no re-ejercitado en esta corrida runtime por no sembrar timestamps idénticos." },
+    { "id": "FR-005", "fuente": "spec.md · FR-005 (expandir delegación: sumilla + colaborador + fecha/hora)", "status": "cumple",
+      "evidencia": "Verificado en runtime: el evento DELEGACION sembrado devuelve detalleDelegacion completo con sumilla y colaboradorAsignado." },
+    { "id": "FR-006", "fuente": "spec.md · FR-006 (indicar explícitamente ausencia de sumilla)", "status": "cumple",
+      "evidencia": "Verificado en runtime: DELEGACION sembrada sin sumilla devuelve detalleDelegacion.sumilla=null explícito (no se omite el campo), tal como exige el mapper (EventoTramiteWebMapper, comentario FR-006)." },
+    { "id": "FR-007", "fuente": "spec.md · FR-007 (destacar último evento pendiente sin respuesta)", "status": "cumple",
+      "evidencia": "Verificado en runtime: con 3 eventos y sin RESPUESTA, solo el evento más reciente (DELEGACION) tiene pendiente:true." },
+    { "id": "FR-008", "fuente": "spec.md · FR-008 (dejar de mostrar pendiente tras cargar respuesta)", "status": "cumple",
+      "evidencia": "Verificado en runtime: tras sembrar un evento RESPUESTA más reciente, ningún evento queda con pendiente:true y RESPUESTA aparece primero en la lista." },
+    { "id": "FR-009", "fuente": "spec.md · FR-009 (restringir acceso solo a usuarios autorizados)", "status": "cumple con salvedad",
+      "evidencia": "Verificado en runtime: X-Usuario-Id ausente -> 400; 'no-autorizado' -> 403 TRAMITE_NO_AUTORIZADO; usuario válido -> 200. El mecanismo en sí es un adaptador SIMULADO (SimulatedTramiteAccessAdapter) que acepta cualquier identificador no vacío como autorizado — no verifica visibilidad/asignación real, algo explícitamente pendiente de US-01/US-03/US-05 según el propio plan.md. Ver security.hallazgos (severidad medio)." },
+    { "id": "FR-010", "fuente": "spec.md · FR-010 (reflejar eventos nuevos sin captura manual)", "status": "cumple",
+      "evidencia": "Verificado en runtime de forma directa: se sembró un evento RESPUESTA con la app corriendo sin respuesta previa (tras reinicio) y la siguiente consulta ya lo reflejó sin ninguna acción adicional del cliente; el servicio además lee siempre el repositorio sin caché (ConsultarLineaDeTiempoService, comentario FR-010)." },
+    { "id": "Edge-case: desempate estable en eventos con misma fecha/hora", "fuente": "spec.md · Edge Cases", "status": "cumple",
+      "evidencia": "Cubierto por EventoTramiteRepositoryAdapterIT (orden por fechaHora DESC, secuencia DESC); no re-verificado en runtime en esta corrida." },
+    { "id": "Edge-case: usuario no autorizado no debe ver ningún evento", "fuente": "spec.md · Edge Cases", "status": "cumple",
+      "evidencia": "Verificado en runtime: X-Usuario-Id: no-autorizado devuelve 403 con ErrorResponse, sin ningún evento en el cuerpo." },
+    { "id": "Edge-case: evento de tipo desconocido con etiqueta genérica", "fuente": "spec.md · Edge Cases", "status": "cumple",
+      "evidencia": "Cubierto por ConsultarLineaDeTiempoServiceTest (TipoEvento.OTRO + etiquetaGenerica); no re-verificado en runtime en esta corrida." },
+    { "id": "Hallazgo (nuevo, runtime): 400 con formato de error inconsistente/no documentado", "fuente": "no está en spec.md; hallado al sondear con header faltante y UUID inválido durante verificación end-to-end", "status": "incumple",
+      "evidencia": "CONFIRMADO EN RUNTIME (2026-07-06): falta de X-Usuario-Id o tramiteId no-UUID devuelven 400 con el cuerpo genérico de Spring Boot ({timestamp,status,error,path}) en vez de ErrorResponse{codigo,mensaje}, y ese código no aparece en contracts/openapi.yaml (solo 200/403/404 documentados). No es un bug funcional de negocio pero rompe la consistencia del contrato para cualquier cliente que maneje errores de forma genérica." }
+  ]
+}

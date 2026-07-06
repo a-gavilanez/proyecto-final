@@ -1,0 +1,71 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<title>Reporte de calidad · gestionDocumental</title>
+<style>
+ body{margin:0;background:#F3F4F1;color:#0E1A26;font:16px/1.55 -apple-system,Segoe UI,Roboto,sans-serif;padding:40px}
+ .wrap{max-width:880px;margin:0 auto}
+ h1{font-size:30px;margin:0 0 4px;letter-spacing:-.02em}
+ .eyebrow{font:700 12px/1 IBM Plex Mono,monospace;color:#9E1B2E;letter-spacing:.12em;text-transform:uppercase}
+ .verdict{display:inline-block;background:#2E7D52;color:#fff;font:800 20px/1 IBM Plex Mono,monospace;padding:12px 22px;border-radius:10px;margin:14px 0 28px}
+ .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px}
+ .card{border:1px solid #d7dad5;border-radius:12px;padding:16px;background:#fbfcfa}
+ .card h3{margin:0 0 8px;font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:#46535f}
+ .big{font-size:22px;font-weight:800;margin-top:6px}
+ table{width:100%;border-collapse:collapse;margin:10px 0 26px;font-size:14px}
+ th{text-align:left;font:700 11px/1 IBM Plex Mono,monospace;letter-spacing:.08em;text-transform:uppercase;color:#46535f;border-bottom:2px solid #9E1B2E;padding:8px 10px}
+ td{padding:9px 10px;border-bottom:1px solid #e6e8e4;vertical-align:top}
+ h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:#8F6A1C;margin:24px 0 6px}
+ .meta{color:#5a6b78;font:13px/1.5 IBM Plex Mono,monospace}
+ .badge{padding:3px 12px;border-radius:999px;font:700 13px/1 IBM Plex Mono,monospace;color:#fff}
+ .pasa{background:#2E7D52}
+ .salvedad{background:#8F6A1C}
+ .falla{background:#B3402F}
+</style></head><body><div class="wrap">
+ <div class="eyebrow">Quality &amp; Governance Agent · Unidad 3</div>
+ <h1>Reporte de calidad — gestionDocumental <span class="meta">v1.0.0</span></h1>
+ <div class="meta">commit no .git en la ruta auditada · 2026-07-06 · umbral cobertura 80%</div>
+ <div class="verdict">APROBADO CON OBSERVACIONES</div>
+ <div class="pillars">
+   <div class="card"><h3>Pruebas <span class="badge pasa">PASA</span></h3>
+     <div class="big">38/38</div>
+     <div class="meta">cobertura línea 100% · rama 94.8%</div></div>
+   <div class="card"><h3>Seguridad <span class="badge pasa">PASA</span></h3>
+     <div class="big">0 críticas / 0 high</div>
+     <div class="meta">1 medio (autorización simulada) · 0 secretos</div></div>
+   <div class="card"><h3>Criterios <span class="badge salvedad">CON OBSERVACIONES</span></h3>
+     <div class="big">13/14</div>
+     <div class="meta">criterios que cumplen (1 con salvedad incluido)</div></div>
+ </div>
+ <div class="card" style="border-color:#8F6A1C;background:#FBF6EC;margin-bottom:28px">
+   <h3 style="color:#8F6A1C">Verificación en caliente (runtime) · 2026-07-06</h3>
+   <div class="meta" style="color:#0E1A26;font-family:inherit;font-size:14px;line-height:1.6">
+     El endpoint <code>GET /tramites/{id}/historial</code> es de solo lectura y no tiene mecanismo de siembra de datos en producción.
+     Se sembraron eventos reales insertando filas vía JDBC directo sobre el archivo H2 que respalda la app (<code>bootRun</code> con
+     <code>spring.datasource.url=jdbc:h2:file:./build/gdocdb</code>) y se ejercitó el controlador REST real de punta a punta.
+     <b>AC-1, AC-2 y los 4 pasos de AC-3 se comportan exactamente como especifica el spec.</b> Único hallazgo: los errores 400
+     (header faltante / UUID inválido) usan un formato de cuerpo distinto al resto de la API y no documentado en el contrato OpenAPI.
+   </div>
+ </div>
+ <h2>Criterios de aceptación</h2>
+ <table><thead><tr><th>Criterio</th><th>Estado</th><th>Evidencia</th></tr></thead><tbody>
+<tr><td style="font-family:IBM Plex Mono,monospace">FR-001</td><td><span class="badge pasa">CUMPLE</span></td><td>Verificado en runtime: GET /historial sobre un trámite sembrado con 3 eventos devuelve los 3. TramiteHistorialControllerIT y el feature Cucumber cubren el mismo camino.</td></tr>
+<tr><td style="font-family:IBM Plex Mono,monospace">FR-002</td><td><span class="badge pasa">CUMPLE</span></td><td>Los 4 tipos base verificados en runtime (CREACION, DERIVACION, DELEGACION, RESPUESTA); TipoEvento.OTRO cubierto por ConsultarLineaDeTiempoServiceTest y TramiteEventoTestDataBuilder.</td></tr>
+<tr><td style="font-family:IBM Plex Mono,monospace">FR-003</td><td><span class="badge pasa">CUMPLE</span></td><td>Verificado en runtime: todos los eventos de la respuesta incluyen actorResponsable y fechaHora.</td></tr>
+<tr><td style="font-family:IBM Plex Mono,monospace">FR-004</td><td><span class="badge pasa">CUMPLE</span></td><td>Verificado en runtime: eventos con fechaHora distinta se devuelven en orden descendente correcto. Desempate por 'secuencia' cubierto por EventoTramiteRepositoryAdapterIT (no re-ejercitado en runtime en esta corrida).</td></tr>
+<tr><td style="font-family:IBM Plex Mono,monospace">FR-005</td><td><span class="badge pasa">CUMPLE</span></td><td>Verificado en runtime: el evento DELEGACION sembrado devuelve detalleDelegacion completo con sumilla y colaboradorAsignado.</td></tr>
+<tr><td style="font-family:IBM Plex Mono,monospace">FR-006</td><td><span class="badge pasa">CUMPLE</span></td><td>Verificado en runtime: DELEGACION sin sumilla devuelve detalleDelegacion.sumilla=null explícito, no se omite el campo.</td></tr>
+<tr><td style="font-family:IBM Plex Mono,monospace">FR-007</td><td><span class="badge pasa">CUMPLE</span></td><td>Verificado en runtime: con eventos sin RESPUESTA, solo el más reciente (DELEGACION) tiene pendiente:true.</td></tr>
+<tr><td style="font-family:IBM Plex Mono,monospace">FR-008</td><td><span class="badge pasa">CUMPLE</span></td><td>Verificado en runtime: tras sembrar RESPUESTA más reciente, ningún evento queda pendiente:true y RESPUESTA aparece primero.</td></tr>
+<tr><td style="font-family:IBM Plex Mono,monospace">FR-009</td><td><span class="badge salvedad">CUMPLE CON SALVEDAD</span></td><td>Verificado en runtime: sin header -> 400; 'no-autorizado' -> 403; usuario válido -> 200. Pero el mecanismo es un adaptador SIMULADO que acepta cualquier identificador no vacío como autorizado, sin verificar visibilidad/asignación real (pendiente de US-01/US-03/US-05, documentado en plan.md). Ver hallazgo de seguridad.</td></tr>
+<tr><td style="font-family:IBM Plex Mono,monospace">FR-010</td><td><span class="badge pasa">CUMPLE</span></td><td>Verificado en runtime: se sembró RESPUESTA con la app corriendo y la siguiente consulta ya lo reflejó sin acción adicional; el servicio lee siempre el repositorio sin caché.</td></tr>
+<tr><td style="font-family:IBM Plex Mono,monospace">Edge-case: desempate estable en misma fecha/hora</td><td><span class="badge pasa">CUMPLE</span></td><td>Cubierto por EventoTramiteRepositoryAdapterIT (orden por fechaHora DESC, secuencia DESC); no re-verificado en runtime en esta corrida.</td></tr>
+<tr><td style="font-family:IBM Plex Mono,monospace">Edge-case: usuario no autorizado no ve ningún evento</td><td><span class="badge pasa">CUMPLE</span></td><td>Verificado en runtime: X-Usuario-Id: no-autorizado devuelve 403 con ErrorResponse, sin ningún evento en el cuerpo.</td></tr>
+<tr><td style="font-family:IBM Plex Mono,monospace">Edge-case: evento de tipo desconocido con etiqueta genérica</td><td><span class="badge pasa">CUMPLE</span></td><td>Cubierto por ConsultarLineaDeTiempoServiceTest (TipoEvento.OTRO + etiquetaGenerica); no re-verificado en runtime en esta corrida.</td></tr>
+<tr><td style="font-family:IBM Plex Mono,monospace">Hallazgo (nuevo, runtime): 400 con formato de error inconsistente</td><td><span class="badge falla">FALLA</span></td><td><b>CONFIRMADO EN RUNTIME (2026-07-06):</b> falta de X-Usuario-Id o tramiteId no-UUID devuelven 400 con el cuerpo genérico de Spring Boot ({timestamp,status,error,path}) en vez de ErrorResponse{codigo,mensaje}, y ese código no aparece en contracts/openapi.yaml. No es un bug funcional, pero rompe la consistencia del contrato de la API.</td></tr>
+</tbody></table>
+ <h2>Hallazgos de seguridad (revisión manual)</h2>
+ <table><thead><tr><th>Severidad</th><th>Ubicación</th><th>Nota</th></tr></thead><tbody>
+<tr><td>medio</td><td style="font-family:IBM Plex Mono,monospace">infrastructure/security/SimulatedTramiteAccessAdapter.java:16-26</td><td>FR-009 se implementa con un adaptador explícitamente temporal: cualquier valor no vacío en X-Usuario-Id distinto de 'no-autorizado' se considera autorizado, sin verificar visibilidad/asignación real. Documentado en el propio código y en plan.md como dependencia pendiente de US-01/US-03/US-05, pero mientras tanto cualquier usuario puede leer el historial de cualquier trámite.</td></tr>
+<tr><td>informativo</td><td style="font-family:IBM Plex Mono,monospace">infrastructure/web/TramiteExceptionHandler.java (ausencia de handler)</td><td>Falta de header o UUID inválido producen 400 con el cuerpo genérico de Spring en vez de ErrorResponse{codigo,mensaje}; no documentado en el contrato OpenAPI.</td></tr>
+</tbody></table>
+ <div class="meta">Generado por build-report.py · misma regla del gate · "el gate manda, no el modelo".</div>
+</div></body></html>

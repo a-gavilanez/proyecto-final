@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: gestionDocumental
+
+server:
+  servlet:
+    context-path: /api
